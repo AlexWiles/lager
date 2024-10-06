@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #game {
+            text-align: center;
+        }
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2px;
+            margin-bottom: 20px;
+        }
+
+        #title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .cell {
+            flex: 1;
+            flex-grow: 1;
+            aspect-ratio: 1 / 1;
+            border: 1px solid #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        #keyboard {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 5px;
+        }
+        .key {
+            padding: 10px;
+            border: none;
+            background-color: #d3d6da;
+            cursor: pointer;
+            /* Added transition for smooth effect */
+            transition: all 0.1s ease;
+        }
+
+        /* Added press effect styling */
+        .key:active {
+            transform: scale(0.95);
+            background-color: #bbbdc0;
+        }
+        .correct {
+            background-color: #6aaa64;
+            color: white;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        .present {
+            background-color: #c9b458;
+            color: white;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        .absent {
+            background-color: #787c7e;
+            color: white;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        /* Modified animation for flipping effect */
+        @keyframes flip {
+            0% {
+                transform: rotateX(0);
+            }
+            50% {
+                transform: rotateX(90deg);
+            }
+            100% {
+                transform: rotateX(0);
+            }
+        }
+
+
+        /* Animation delay for each cell in the row */
+        .active-cell:nth-child(1) {
+            animation-delay: 0s;
+            transition-delay: 0s;
+        }
+        .active-cell:nth-child(2) {
+            animation-delay: 0.15s;
+            transition-delay: 0.15s;
+        }
+        .active-cell:nth-child(3) {
+            animation-delay: 0.3s;
+            transition-delay: 0.3s;
+        }
+        .active-cell:nth-child(4) {
+            animation-delay: 0.45s;
+            transition-delay: 0.45s;
+        }
+        .active-cell:nth-child(5) {
+            animation-delay: 0.6s;
+            transition-delay: 0.6s;
+        }
+
+        /* Apply animation to elements with these classes */
+        .active-cell {
+            animation: flip 0.5s;
+            animation-fill-mode: backwards;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="game">
+        <h1>Lager</h1>
+        <div id="grid"></div>
+        <div id="keyboard"></div>
+        <p id="message">
+            <a href="javascript:location.reload()">start over</a>
+        </p>
+    </div>
+
+    <script>
+        let targetWord = 'LAGER';
+        let currentRow = 0;
+        let currentCol = 0;
+        const maxAttempts = 6;
+
+        const grid = document.getElementById('grid');
+        const keyboard = document.getElementById('keyboard');
+        const messageEl = document.getElementById('message');
+
+        // Initialize the grid
+        for (let i = 0; i < maxAttempts; i++) {
+            for (let j = 0; j < 5; j++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                grid.appendChild(cell);
+            }
+        }
+
+        // Initialize the keyboard
+        'QWERTYUIOPASDFGHJKLZXCVBNM'.split('').forEach(letter => {
+            const key = document.createElement('button');
+            key.textContent = letter;
+            key.className = 'key';
+            key.addEventListener('click', () => handleInput(letter));
+            keyboard.appendChild(key);
+        });
+
+        // Add Enter and Backspace keys
+        const enterKey = document.createElement('button');
+        enterKey.textContent = 'Enter';
+        enterKey.className = 'key';
+        enterKey.style.gridColumn = 'span 2';
+        enterKey.addEventListener('click', checkGuess);
+        keyboard.appendChild(enterKey);
+
+        const backspaceKey = document.createElement('button');
+        backspaceKey.textContent = '←';
+        backspaceKey.className = 'key';
+        backspaceKey.addEventListener('click', () => handleInput('Backspace'));
+        keyboard.appendChild(backspaceKey);
+
+        function handleInput(key) {
+            if (currentRow >= maxAttempts) return;
+
+            if (key === 'Backspace') {
+                if (currentCol > 0) {
+                    currentCol--;
+                    grid.children[currentRow * 5 + currentCol].textContent = '';
+                }
+            } else if (key === 'Enter') {
+                checkGuess();
+            } else if (currentCol < 5) {
+                grid.children[currentRow * 5 + currentCol].textContent = key;
+                currentCol++;
+            }
+        }
+
+        function checkGuess() {
+            if (currentCol === 5) {
+                const guess = Array.from(grid.children)
+                    .slice(currentRow * 5, (currentRow + 1) * 5)
+                    .map(cell => cell.textContent)
+                    .join('');
+
+                const result = evaluateGuess(guess);
+                updateGrid(result);
+                updateKeyboard(guess, result);
+
+                if (guess === targetWord) {
+                    currentRow = maxAttempts; // End the game
+                } else if (currentRow === maxAttempts - 1) {
+                    messageEl.textContent = `Game over! The word was ${targetWord}.`;
+                } else {
+                    currentRow++;
+                    currentCol = 0;
+                }
+            }
+        }
+
+        function evaluateGuess(guess) {
+            const result = Array(5).fill('absent');
+            const targetLetters = targetWord.split('');
+
+            // Check for correct letters
+            for (let i = 0; i < 5; i++) {
+                if (guess[i] === targetWord[i]) {
+                    result[i] = 'correct';
+                    targetLetters[i] = null;
+                }
+            }
+
+            // Check for present letters
+            for (let i = 0; i < 5; i++) {
+                if (result[i] !== 'correct' && targetLetters.includes(guess[i])) {
+                    result[i] = 'present';
+                    targetLetters[targetLetters.indexOf(guess[i])] = null;
+                }
+            }
+
+            return result;
+        }
+
+        function updateGrid(result) {
+            for (let i = 0; i < 5; i++) {
+                const cell = grid.children[currentRow * 5 + i];
+                cell.classList.add(result[i]);
+                cell.classList.add('active-cell');
+            }
+        }
+
+        function updateKeyboard(guess, result) {
+            for (let i = 0; i < 5; i++) {
+                const key = Array.from(keyboard.children).find(k => k.textContent === guess[i]);
+                if (key) {
+                    key.classList.remove('correct', 'present', 'absent', 'active-cell');
+                    key.classList.add(result[i]);
+                }
+            }
+        }
+
+        // Handle keyboard input
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                checkGuess();
+            } else if (e.key === 'Backspace') {
+                handleInput('Backspace');
+            } else if (/^[a-zA-Z]$/.test(e.key)) {
+                handleInput(e.key.toUpperCase());
+            }
+        });
+    </script>
+</body>
+</html>
